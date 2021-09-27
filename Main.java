@@ -40,13 +40,15 @@ public class Main {
             populationTest(new FirstGenerator());
         } else if (args[0].equals("second")) {
             populationTest(new SecondGenerator());
+        } else if (args[0].equals("threaded-test")) {
+            threadedTests();
         } else if (args[0].equals("tests")) {
             tests();
         }
 
     }
 
-    interface Generator {
+    public interface Generator {
         public int generate();
     }
 
@@ -84,7 +86,6 @@ public class Main {
             this.range = range;
             this.mean = mean;
             this.var = var;
-            System.out.println(range + " " + mean + " " + var);
         }
 
         @Override
@@ -167,6 +168,35 @@ public class Main {
         System.out.println("    Data stats:");
         System.out.println("        Mean=" + mean);
         System.out.println("        Variance=" + variance);
+    }
+
+    private static void threadedTests() {
+        System.out.println("** Threaded tests **");
+
+        int operationCount = (int) 1e6;
+        int[][] distributions = { { 10, 10, 80 }, { 50, 50, 0 }, { 25, 25, 50 }, { 5, 5, 90 }, };
+        int[] threadCounts = { 2, 12, 30, 46 };
+
+        for (int[] distribution : distributions) {
+            System.out.println("==== Distribution " + distribution[0] + " - " + distribution[1] + " - "
+                    + distribution[2] + " ====");
+            for (int threadCount : threadCounts) {
+                System.out.println("== With " + threadCount + " threads ==");
+
+                for (int generatorType = 0; generatorType < 2; generatorType++) {
+                    System.out.println(" - With generator "+generatorType+" - ");
+                    long totalDuration = 0;
+                    for (int exec = 0; exec < 10; exec++) {
+                        long duration = new ThreadedTests(threadCount, operationCount, distribution[0], distribution[1])
+                                .run(generatorType);
+                        totalDuration += duration;
+                        //System.out.print(formatNano(duration) + " ");
+                    }
+                    System.out.println("Total duration: " + formatNano(totalDuration));
+                    System.out.println("Average duration: " + formatNano(totalDuration/10L));
+                }
+            }
+        }
     }
 
     private static void tests() {
