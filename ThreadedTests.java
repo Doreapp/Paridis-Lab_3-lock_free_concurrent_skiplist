@@ -24,6 +24,13 @@ public class ThreadedTests {
         this.skipListSet = new LockfreeConcurrentSkipListSet<>();
     }
 
+    public void fillUpList(int generatorType) {
+        Main.Generator generator = generatorType == 0 ? new Main.FirstGenerator() : new Main.SecondGenerator();
+        for(int i = 0; i < 1e7; i++){
+            skipListSet.add(generator.generate());
+        }
+    }
+
     public long run(int generatorType) {
         int[][] threadOperations = new int[3][threadCount];
         int currOperationCount = 0;
