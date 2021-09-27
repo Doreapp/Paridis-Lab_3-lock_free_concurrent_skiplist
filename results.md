@@ -19,9 +19,12 @@ java Main first
 
 **Results**
 
-* Execution time: 737.5s (12+ minutes)
-* Mean: 5.0006*10^7
-    * Expected Mean: 5*10^7 
-* Variance:
-    * Expected Variance:
+* Execution time: `36.9s`
+* Mean: `5.0003*10^6`
+    * Expected Mean: `5*10^6` 
+* Variance: `8.335 * 10^12`
+    * Expected Variance: `(1*10^7)^2 / 12 = 10^14/12 = 8.333*10^12`
 * Comments: 
+    The distribution seems good.
+
+### Second population 

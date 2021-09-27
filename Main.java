@@ -70,35 +70,55 @@ public class Main {
     public static class SecondGenerator implements Generator {
         int range;
         int mean, var;
-        private static final double denum = Math.sqrt(2.0*Math.PI);
+        private int next = -1;
 
         SecondGenerator() {
             this((int) 1e7);
         }
 
         SecondGenerator(int range) {
-            this(range, range/2, range/6);
+            this(range, range / 2, range / 6);
         }
 
-        SecondGenerator(int range, int mean, int var){
+        SecondGenerator(int range, int mean, int var) {
             this.range = range;
             this.mean = mean;
             this.var = var;
+            System.out.println(range + " " + mean + " " + var);
         }
 
         @Override
         public int generate() {
-            // Following calculation from https://www.baeldung.com/cs/uniform-to-normal-distribution
-            double _tmp = (Math.random() - mean) / (double) var;
-            double value = Math.exp(-0.5*_tmp*_tmp) / (var * denum);
-            int result = (int) value;
+            if (next >= 0) {
+                int res = next;
+                next = -1;
+                return res;
+            }
+
+            // Following calculation from
+            // https://www.baeldung.com/cs/uniform-to-normal-distribution
+            double r1 = Math.random(), r2 = Math.random();
+            double firstPart = Math.sqrt(-2 * Math.log(r1));
+            double z1 = firstPart * Math.cos(2 * Math.PI * r2) / 5.0 + 1.0;
+            double z2 = firstPart * Math.sin(2 * Math.PI * r2) / 5.0 + 1.0;
+            next = (int) (z1 * mean);
+            int result = (int) (z2 * mean);
+
+            if (next < 0) {
+                next = 0;
+            } else if (next >= this.range) {
+                next = this.range - 1;
+            }
+
             if (result < 0) {
                 result = 0;
             } else if (result >= this.range) {
-                result = this.range-1;
+                result = this.range - 1;
             }
+
             return result;
         }
+
     }
 
     private static void populationTest(Generator generator) {
