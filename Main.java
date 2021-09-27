@@ -25,7 +25,7 @@ public class Main {
         String usString = us < 10 ? "00" + us : us < 100 ? "0" + us : "" + us;
         String msString = ms < 10 ? "00" + ms : ms < 100 ? "0" + ms : "" + ms;
 
-        return s+"'"+msString+"'"+usString+"'"+nsString+"'";
+        return s + "'" + msString + "'" + usString + "'" + nsString + "'";
     }
 
     public static void main(String[] args) {
@@ -38,6 +38,8 @@ public class Main {
             printHelp();
         } else if (args[0].equals("first")) {
             populationTest(new FirstGenerator());
+        } else if (args[0].equals("second")) {
+            populationTest(new SecondGenerator());
         } else if (args[0].equals("tests")) {
             tests();
         }
@@ -52,7 +54,7 @@ public class Main {
         int range;
 
         FirstGenerator() {
-            this((int) 10e7);
+            this((int) 1e7);
         }
 
         FirstGenerator(int range) {
@@ -65,8 +67,42 @@ public class Main {
         }
     }
 
+    public static class SecondGenerator implements Generator {
+        int range;
+        int mean, var;
+        private static final double denum = Math.sqrt(2.0*Math.PI);
+
+        SecondGenerator() {
+            this((int) 1e7);
+        }
+
+        SecondGenerator(int range) {
+            this(range, range/2, range/6);
+        }
+
+        SecondGenerator(int range, int mean, int var){
+            this.range = range;
+            this.mean = mean;
+            this.var = var;
+        }
+
+        @Override
+        public int generate() {
+            // Following calculation from https://www.baeldung.com/cs/uniform-to-normal-distribution
+            double _tmp = (Math.random() - mean) / (double) var;
+            double value = Math.exp(-0.5*_tmp*_tmp) / (var * denum);
+            int result = (int) value;
+            if (result < 0) {
+                result = 0;
+            } else if (result >= this.range) {
+                result = this.range-1;
+            }
+            return result;
+        }
+    }
+
     private static void populationTest(Generator generator) {
-        populationTest(generator, (int) (10e7));
+        populationTest(generator, (int) (1e7));
     }
 
     private static void populationTest(Generator generator, final int length) {
@@ -88,15 +124,15 @@ public class Main {
 
             skiplist.add((Integer) number);
             // sys.stdout.write("\033[K")
-            if (i % 1000000 == 0) {
+            if (i % 100000 == 0) {
                 if (i != 0)
-                    System.out.print("\b\b\b\b\b\b\b\b\b\b\b\b\b"); // Remove the last printed progress line 
-                System.out.print("Progress: " + ((int) (i * 100.0 / length))+"%");
+                    System.out.print("\b\b\b\b\b\b\b\b\b\b\b\b\b"); // Remove the last printed progress line
+                System.out.print("Progress: " + ((int) (i * 100.0 / length)) + "%");
             }
         }
 
         System.out.println();
-        System.out.println("Duration: "+formatNano(System.nanoTime() - tsStart)+" ns");
+        System.out.println("Duration: " + formatNano(System.nanoTime() - tsStart) + " ns");
 
         final double mean = sum / length;
 
@@ -125,25 +161,25 @@ public class Main {
         set.add(5);
         set.add(-7);
         set.add(123);
-        
+
         System.out.println("-- Set w/ some values --");
         System.out.println(set.stringify());
         System.out.println("--- ---------- --");
 
-        for(int i = 0; i < 20; i++){
+        for (int i = 0; i < 20; i++) {
             set.add(i);
         }
-        
+
         System.out.println("-- Set w/ 20 more values --");
         System.out.println(set.stringify());
         System.out.println("--- ---------- --");
 
-        System.out.println("Set contains 13: "+set.contains(13));
+        System.out.println("Set contains 13: " + set.contains(13));
 
-        for(int i = 0; i < 10; i++){
+        for (int i = 0; i < 10; i++) {
             set.remove(i);
         }
-        
+
         System.out.println("-- Set w/ 10 less values --");
         System.out.println(set.stringify());
         System.out.println("--- ---------- --");
