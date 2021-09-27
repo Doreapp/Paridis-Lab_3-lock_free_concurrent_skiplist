@@ -53,118 +53,91 @@ java Main second
 
 ## Tests with Several threads
 
-## Distribution 1
+We first build the two populations with 10^6 elements.
+
+Then for each combination, we fill a new List with a population, and run the test.
+
+### Distribution 1
 * 10% add
 * 10% remove
 * 80% contains
 
-### First population
+#### First population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 0.699s                  |
-| 12                      | 0.378s                  |
-| 30                      | 0.373s                  |
-| 46                      | 0.358s                  |
+| 2                      | 182.87s                  |
+| 12                      | 54.83s                  |
+| 30                      | 46.08s                  |
+| 46                      | 44.84s                  |
 
-### Second population 
+#### Second population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 0.788s                  |
-| 12                      | 0.388s                  |
-| 30                      | 0.390s                  |
-| 46                      | 0.365s                  |
+| 2                      | 221.79s                  |
+| 12                      | 54.54s                  |
+| 30                      | 47.05s                  |
+| 46                      | 44.33s                  |
 
-## Distribution 2
+### Distribution 2
 * 50% add
 * 50% remove
+* 0% contains
 
-### First population
+#### First population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 1.343s                  |
-| 12                      | 0.496s                  |
-| 30                      | 0.457s                  |
-| 46                      | 0.433s                  |
+| 2                      | 244.96s                  |
+| 12                      | 56.04s                  |
+| 30                      | 50.66s                  |
+| 46                      | 49.38s                  |
 
-### Second population 
+#### Second population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 1.370s                  |
-| 12                      | 0.503s                  |
-| 30                      | 0.445s                  |
-| 46                      | 0.458s                  |
+| 2                      | 247.65s                  |
+| 12                      | 59.29s                  |
+| 30                      | 54.05s                  |
+| 46                      | 53.0s                  |
 
-
-## Distribution 3
+### Distribution 3
 * 25% add
 * 25% remove
 * 50% contains
 
-### First population
+#### First population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 1.118s                  |
-| 12                      | 0.437s                  |
-| 30                      | 0.396s                  |
-| 46                      | 0.393s                  |
+| 2                      | 221.6s                  |
+| 12                      | 51.35s                  |
+| 30                      | 46.74s                  |
+| 46                      | 46.42s                  |
 
-### Second population 
+#### Second population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 1.145s                  |
-| 12                      | 0.445s                  |
-| 30                      | 0.415s                  |
-| 46                      | 0.415s                  |
+| 2                      | 215.34s                  |
+| 12                      | 53.5s                  |
+| 30                      | 48.4s                  |
+| 46                      | 48.11s                  |
 
-
-## Distribution 3
+### Distribution 4
 * 5% add
 * 5% remove
 * 90% contains
 
-### First population
+#### First population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 0.503s                  |
-| 12                      | 0.437s                  |
-| 30                      | 0.396s                  |
-| 46                      | 0.393s                  |
+| 2                      | 212.79s                  |
+| 12                      | 50.13s                  |
+| 30                      | 44.51s                  |
+| 46                      | 44.21s                  |
 
-### Second population 
+#### Second population
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
-| 2                       | 0.591s                  |
-| 12                      | 0.445s                  |
-| 30                      | 0.415s                  |
-| 46                      | 0.415s                  |
+| 2                      | 218.96s                  |
+| 12                      | 49.48s                  |
+| 30                      | 45.04s                  |
+| 46                      | 44.22s                  |
 
-
-==== Distribution 5 - 5 - 90 ====
-== With 2 threads ==
- - With generator 0 -
-Total duration: 5'036'459'216'
-Average duration: 0'503'645'921'
- - With generator 1 -
-Total duration: 5'917'725'676'
-Average duration: 0'591'772'567'
-== With 12 threads ==
- - With generator 0 -
-Total duration: 3'637'959'950'
-Average duration: 0'363'795'995'
- - With generator 1 -
-Total duration: 3'577'822'974'
-Average duration: 0'357'782'297'
-== With 30 threads ==
- - With generator 0 -
-Total duration: 3'710'297'817'
-Average duration: 0'371'029'781'
- - With generator 1 -
-Total duration: 3'669'058'735'
-Average duration: 0'366'905'873'
-== With 46 threads ==
- - With generator 0 -
-Total duration: 3'351'703'096'
-Average duration: 0'335'170'309'
- - With generator 1 -
-Total duration: 3'419'753'811'
-Average duration: 0'341'975'381'
