@@ -1,3 +1,5 @@
+import java.util.*;
+
 public class ThreadedTests {
     int addCount, removeCount, containsCount;
     int threadCount;
@@ -29,6 +31,16 @@ public class ThreadedTests {
         for(int i = 0; i < 1e7; i++){
             skipListSet.add(generator.generate());
         }
+    }
+
+    public void fillUpListWithSet(Set<Integer> set){
+        for(Integer i : set){
+            skipListSet.add(i);
+        }
+    }
+
+    public void setList(LockfreeConcurrentSkipListSet<Integer> skipListSet) {
+        this.skipListSet = skipListSet;
     }
 
     public long run(int generatorType) {

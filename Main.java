@@ -177,6 +177,17 @@ public class Main {
         int[][] distributions = { { 10, 10, 80 }, { 50, 50, 0 }, { 25, 25, 50 }, { 5, 5, 90 }, };
         int[] threadCounts = { 2, 12, 30, 46 };
 
+        System.out.println("Building populations");
+        Set<Integer> firstPopulation = new HashSet<>();
+        Generator generator = new FirstGenerator();
+        for (int i = 0; i < 1e7; i++)
+            firstPopulation.add(generator.generate());
+
+        Set<Integer> secondPopulation = new HashSet<>();
+        generator = new SecondGenerator();
+        for (int i = 0; i < 1e7; i++)
+            secondPopulation.add(generator.generate());
+
         int indexDistrib = 0;
         for (int[] distribution : distributions) {
             System.out.println("## Distribution " + (++indexDistrib));
@@ -196,15 +207,15 @@ public class Main {
                     for (int exec = 0; exec < 10; exec++) {
                         ThreadedTests test = new ThreadedTests(threadCount, operationCount, distribution[0],
                                 distribution[1]);
-                        test.fillUpList(generatorType);
+                        test.fillUpListWithSet(generatorType == 0 ? firstPopulation : secondPopulation);
                         long duration = test.run(generatorType);
                         totalDuration += duration;
                         // System.out.print(formatNano(duration) + " ");
                     }
                     // System.out.println("Total duration: " + formatNano(totalDuration));
                     // System.out.println("Average duration: " + formatNano(totalDuration / 10L));
-                    String timeS = (totalDuration/1_000_000L)/100.0+"s";
-                    System.out.println("| "+threadCount+"                      | "+timeS+"                  |");
+                    String timeS = (totalDuration / 1_000_000L) / 100.0 + "s";
+                    System.out.println("| " + threadCount + "                      | " + timeS + "                  |");
                 }
                 System.out.println();
             }

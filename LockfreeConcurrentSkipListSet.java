@@ -201,8 +201,6 @@ public class LockfreeConcurrentSkipListSet<T> {
         return result;
     }
 
-    
-
     /**
      * Node of the ListSet
      */
