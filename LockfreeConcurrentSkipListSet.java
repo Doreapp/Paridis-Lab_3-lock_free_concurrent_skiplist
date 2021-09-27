@@ -1,4 +1,3 @@
-import java.util.concurrent.locks.*;
 import java.util.concurrent.atomic.*;
 
 /**
@@ -6,9 +5,28 @@ import java.util.concurrent.atomic.*;
  */
 
 public class LockfreeConcurrentSkipListSet<T> {
-    static final int MAX_LEVEL = ...; //TODO choose a max level
+    // Max level: TODO choose and understand...
+    static final int MAX_LEVEL = 31; 
+
+    // probability for randomLevel method (probability of haaving a 0)
+    private static final double P = 0.75;  
+
     final Node<T> head = new Node<T>(Integer.MIN_VALUE);
     final Node<T> tail = new Node<T>(Integer.MAX_VALUE);
+
+    /**
+     * Implementation found at
+     * https://stackoverflow.com/questions/12067045/random-level-function-in-skip-list
+     * Should validate "The randomLevel() method is designed based on empirical
+     * measurements to maintain the skiplist property."
+     * 
+     * TODO understand better
+     * @return
+     */
+    public static int randomLevel() {
+        int lvl = (int) (Math.log(1. - Math.random()) / Math.log(1. - P));
+        return Math.min(lvl, MAX_LEVEL);
+    }
 
     public LockfreeConcurrentSkipListSet() {
         for (int i = 0; i < head.next.length; i++) {
@@ -17,7 +35,7 @@ public class LockfreeConcurrentSkipListSet<T> {
     }
 
     boolean add(T x) {
-        int topLevel = randomLevel(); //TODO create a random level method
+        int topLevel = randomLevel();
         int bottomLevel = 0;
         Node<T>[] preds = (Node<T>[]) new Node[MAX_LEVEL + 1];
         Node<T>[] succs = (Node<T>[]) new Node[MAX_LEVEL + 1];
@@ -26,7 +44,7 @@ public class LockfreeConcurrentSkipListSet<T> {
             if (found) {
                 return false;
             } else {
-                Node<T> newNode = new Node(x, topLevel);
+                Node<T> newNode = new Node<T>(x, topLevel);
                 for (int level = bottomLevel; level <= topLevel; level++) {
                     Node<T> succ = succs[level];
                     newNode.next[level].set(succ, false);
