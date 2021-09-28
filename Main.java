@@ -172,7 +172,7 @@ public class Main {
 
         long duration = System.nanoTime() - tsStart;
         System.out.println("**Results**");
-        System.out.println("* Execution time: `" + ((int) (duration/1000_0000) / 1.00) + "s`");
+        System.out.println("* Execution time: `" + ((int) (duration/10_000_000) / 100.00) + "s`");
 
         final double mean = sum / length;
 
