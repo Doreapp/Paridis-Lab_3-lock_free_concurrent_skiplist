@@ -198,12 +198,12 @@ public class Main {
         System.out.println("Building populations");
         Set<Integer> firstPopulation = new HashSet<>();
         Generator generator = new FirstGenerator();
-        for (int i = 0; i < 1e7; i++)
+        for (int i = 0; i < 1e6; i++)
             firstPopulation.add(generator.generate());
 
         Set<Integer> secondPopulation = new HashSet<>();
         generator = new SecondGenerator();
-        for (int i = 0; i < 1e7; i++)
+        for (int i = 0; i < 1e6; i++)
             secondPopulation.add(generator.generate());
 
         int indexDistrib = 0;
