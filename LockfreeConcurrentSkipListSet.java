@@ -9,7 +9,7 @@ public class LockfreeConcurrentSkipListSet<T> {
     static final int MAX_LEVEL = 10; 
 
     // probability for randomLevel method (probability of haaving a 0)
-    private static final double P = 0.75;  
+    private static final double P = 0.5;  
 
     // <A> Head of the list, first element ? 
     final Node<T> head = new Node<T>(Integer.MIN_VALUE);

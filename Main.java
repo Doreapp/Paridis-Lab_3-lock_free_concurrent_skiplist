@@ -3,18 +3,29 @@
  * Authors: Antoine Mandin and Nada Lahlou
  */
 
-import java.io.IOException;
 import java.util.*;
 
+/**
+ * Class to execute the tests
+ */
 public class Main {
+    /**
+     * Print the help message
+     */
     public static void printHelp() {
         System.out.println("    Usage:");
-        System.out.println("        java Main [-h | first | tests]");
+        System.out.println("        java Main [-h | first | second | threads | all | tests]");
         System.out.println("            -h : print this help message");
-        System.out.println("            first : start the first test");
+        System.out.println("            first : start the first (population) test");
+        System.out.println("            second : start the second (population) test");
+        System.out.println("            threads : start the third test, running with several thread /!\\ Will take time");
+        System.out.println("            all : Start all tests (first, second, threads)");
         System.out.println("            tests : run some aritary tests to understand the set");
     }
 
+    /**
+     * Format nano second time into a readable String
+     */
     public static String formatNano(long nano) {
         long ns = nano % 1000L;
         long us = (int) ((nano / 1000L) % 1000L);
@@ -40,10 +51,15 @@ public class Main {
             populationTest(new FirstGenerator());
         } else if (args[0].equals("second")) {
             populationTest(new SecondGenerator());
-        } else if (args[0].equals("threaded-test")) {
+        } else if (args[0].equals("threads")) {
             threadedTests();
         } else if (args[0].equals("tests")) {
             tests();
+        } else if (args[0].equals("all")) {
+            System.out.println("## Tests with 2 populations ");
+            populationTest(new FirstGenerator());
+            populationTest(new SecondGenerator());
+            threadedTests();
         }
 
     }
@@ -52,6 +68,9 @@ public class Main {
         public int generate();
     }
 
+    /**
+     * Generate a random uniformally distributed
+     */
     public static class FirstGenerator implements Generator {
         int range;
 
@@ -69,9 +88,11 @@ public class Main {
         }
     }
 
+    /**
+     * Generate a random normally distributed
+     */
     public static class SecondGenerator implements Generator {
         int range;
-        int mean, var;
         private int next = -1;
 
         SecondGenerator() {
@@ -79,13 +100,7 @@ public class Main {
         }
 
         SecondGenerator(int range) {
-            this(range, range / 2, range / 6);
-        }
-
-        SecondGenerator(int range, int mean, int var) {
             this.range = range;
-            this.mean = mean;
-            this.var = var;
         }
 
         @Override
@@ -102,8 +117,8 @@ public class Main {
             double firstPart = Math.sqrt(-2 * Math.log(r1));
             double z1 = firstPart * Math.cos(2 * Math.PI * r2) / 5.0 + 1.0;
             double z2 = firstPart * Math.sin(2 * Math.PI * r2) / 5.0 + 1.0;
-            next = (int) (z1 * mean);
-            int result = (int) (z2 * mean);
+            next = (int) (z1 * range/2);
+            int result = (int) (z2 * range/2);
 
             if (next < 0) {
                 next = 0;
@@ -127,8 +142,8 @@ public class Main {
     }
 
     private static void populationTest(Generator generator, final int length) {
-        System.out.println("** First population test **");
-        System.out.println("    length=" + length);
+        System.out.println("### population test");
+        System.out.println("With " + length + " members");
 
         LockfreeConcurrentSkipListSet<Integer> skiplist = new LockfreeConcurrentSkipListSet<Integer>();
 
@@ -148,12 +163,16 @@ public class Main {
             if (i % 100000 == 0) {
                 if (i != 0)
                     System.out.print("\b\b\b\b\b\b\b\b\b\b\b\b\b"); // Remove the last printed progress line
-                System.out.print("Progress: " + ((int) (i * 100.0 / length)) + "%");
+                int progress = (int) (i * 100.0 / length);
+                System.out.print("Progress: " + (progress < 10 ? "0"+progress : progress) + "%");
             }
         }
 
         System.out.println();
-        System.out.println("Duration: " + formatNano(System.nanoTime() - tsStart) + " ns");
+
+        long duration = System.nanoTime() - tsStart;
+        System.out.println("**Results**");
+        System.out.println("* Execution time: `" + ((int) (duration/1000_0000) / 1.00) + "s`");
 
         final double mean = sum / length;
 
@@ -165,13 +184,12 @@ public class Main {
         }
         final double variance = squaredDifferencesSum / length;
 
-        System.out.println("    Data stats:");
-        System.out.println("        Mean=" + mean);
-        System.out.println("        Variance=" + variance);
+        System.out.println("* Mean: `"+mean+"`");
+        System.out.println("* Variance: `"+variance+"`");
     }
 
     private static void threadedTests() {
-        System.out.println("** Threaded tests **");
+        System.out.println("## Tests with Several threads");
 
         int operationCount = (int) 1e6;
         int[][] distributions = { { 10, 10, 80 }, { 50, 50, 0 }, { 25, 25, 50 }, { 5, 5, 90 }, };
