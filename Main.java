@@ -14,11 +14,12 @@ public class Main {
      */
     public static void printHelp() {
         System.out.println("    Usage:");
-        System.out.println("        java Main [-h | first | second | threads | all | tests]");
+        System.out.println("        java Main [-h | first | second | threads | linear | all | tests]");
         System.out.println("            -h : print this help message");
         System.out.println("            first : start the first (population) test");
         System.out.println("            second : start the second (population) test");
         System.out.println("            threads : start the third test, running with several thread /!\\ Will take time");
+        System.out.println("            linear : start the linearization test");
         System.out.println("            all : Start all tests (first, second, threads)");
         System.out.println("            tests : run some aritary tests to understand the set");
     }
@@ -55,11 +56,14 @@ public class Main {
             threadedTests();
         } else if (args[0].equals("tests")) {
             tests();
+        }else if (args[0].equals("linear")) {
+            linearizationTest();
         } else if (args[0].equals("all")) {
             System.out.println("## Tests with 2 populations ");
             populationTest(new FirstGenerator());
             populationTest(new SecondGenerator());
             threadedTests();
+            linearizationTest();
         }
 
     }
@@ -238,6 +242,32 @@ public class Main {
                 System.out.println();
             }
         }
+    }
+
+    private static void linearizationTest() {
+        Generator generator = new FirstGenerator(20);
+        LinearLockfreeConcurrentSkipListSet<Integer> skipListSet = new LinearLockfreeConcurrentSkipListSet<>();
+        
+        LinkedList<Integer> population = new LinkedList<>();
+        for(int i = 0; i < 50; i++){
+            population.offer(generator.generate());
+        }
+
+        population.parallelStream().forEach((i) -> {
+            double rand = Math.random();
+            if(rand < 0.333){
+                skipListSet.add(i);
+            } else if (rand < 0.667) {
+                skipListSet.remove(i);
+            } else {
+                skipListSet.contains(i);
+            }
+        });
+
+        System.out.println("## Linearization points");
+        System.out.println("```");
+        System.out.println("\n"+skipListSet.operationsString());
+        System.out.println("```");
     }
 
     private static void tests() {
