@@ -67,6 +67,8 @@ public class Main {
             linearizationTestLock(false);
         } else if (args[0].equals("large-linear-lock")) {
             linearizationTestLock(true);
+        } else if (args[0].equals("threaded-counter")) {
+            threadedCounterLinearisation();
         } else if (args[0].equals("all")) {
             System.out.println("## Tests with 2 populations ");
             populationTest(new FirstGenerator());
@@ -75,6 +77,7 @@ public class Main {
             linearizationTest();
             linearizationTestLock(false);
             linearizationTestLock(true);
+            threadedCounterLinearisation();
         }
 
     }
@@ -257,7 +260,7 @@ public class Main {
 
     private static void linearizationTest() {
         Generator generator = new FirstGenerator(20);
-        LinearLockfreeConcurrentSkipListSet<Integer> skipListSet = new LinearLockfreeConcurrentSkipListSet<>();
+        LinearSkipListSet<Integer> skipListSet = new LinearSkipListSet<>();
 
         LinkedList<Integer> population = new LinkedList<>();
         for (int i = 0; i < 50; i++) {
@@ -290,11 +293,10 @@ public class Main {
         volatile int progress = 0;
         int max = 0;
 
-
         public void printProgress() {
             // Not the first
             flushLastLine();
-            System.out.print(((int)(progress*1000/max)/10.0)+"%");
+            System.out.print(((int) (progress * 1000 / max) / 10.0) + "%");
         }
     }
 
@@ -309,8 +311,7 @@ public class Main {
         }
 
         Generator generator = new FirstGenerator(range);
-        LinearLockfreeConcurrentSkipListSet.useLock = true;
-        LinearLockfreeConcurrentSkipListSet<Integer> skipListSet = new LinearLockfreeConcurrentSkipListSet<>();
+        LockedSkipListSet<Integer> skipListSet = new LockedSkipListSet<>();
 
         System.out.print("Building population...");
 
@@ -353,6 +354,38 @@ public class Main {
             System.out.println("```");
             System.out.println(resultDescription);
             System.out.println("```");
+        }
+    }
+
+    private static void threadedCounterLinearisation() {
+        int[] operationCounts = { (int) 1e1, (int) 1e2, (int) 1e3, (int) 1e4, (int) 1e5, (int) 1e6 };
+        int[][] distributions = { { 10, 10, 80 }, { 50, 50, 0 }, { 25, 25, 50 }, { 5, 5, 90 }, };
+        int[] threadCounts = { 2, 12, 30, 46 };
+
+        System.out.println("### With one counter by thread\n");
+
+        for (int operationCount : operationCounts) {
+            System.out.println("#### Running with " + operationCount + " operations\n");
+
+            int indexDistrib = 0;
+            for (int[] distribution : distributions) {
+                System.out.println("**Distribution " + (++indexDistrib) + "**");
+                System.out.println("* " + distribution[0] + "% add");
+                System.out.println("* " + distribution[1] + "% remove");
+                System.out.println("* " + distribution[2] + "% contains");
+                System.out.println();
+
+                System.out.println("| Number of threads       | Linearisation test      |");
+                System.out.println("|-------------------------|-------------------------|");
+
+                for (int threadCount : threadCounts) {
+                    boolean result = CounterSkipListSet.run(threadCount, operationCount, distribution[0],
+                            distribution[1], 0);
+                    String str = result ? "PASS" : "FAILED";
+                    System.out.println("| " + threadCount + "                      | " + str + "              |");
+                }
+                System.out.println();
+            }
         }
     }
 

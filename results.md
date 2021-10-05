@@ -3,9 +3,9 @@
 Tests are executed on *Tegner*.
 
 **We are using a P of 0.75, and not 0.50 as described into the slide.**
-It seems faster, and as we are consistent between the different tests we estimated that it won't change the overall observation.
+It seems faster, and as we are consistent between the different tests, so we estimated that it won't change the overall observations.
 
-*Note*: The P is the probability to have 0 a `topLevel`
+*Note*: The P is the probability to have 0 as `topLevel`
 
 ## Tests with 2 populations 
 
@@ -60,7 +60,15 @@ java Main second
 
 We first build the two populations with 10^6 elements.
 
-Then for each combination, we fill a new List with a population, and run the test.
+Then for each combination, we fill a new list with a population, and run the test.
+
+We test each distribution with the 2 random distribution of numbers (uniform and normal). We request for a total of 10^6 operations.
+
+**How to reproduce**
+
+```
+java Main threads
+```
 
 ### Distribution 1
 * 10% add
@@ -146,6 +154,14 @@ Then for each combination, we fill a new List with a population, and run the tes
 | 30                      | 45.04s                  |
 | 46                      | 44.22s                  |
 
+### Conclusions
+
+The second population requires more time for `add` and `remove` operations than the first population. However, `contains` operation seems to handle both population the same way.
+
+`contains` operation is the quickest of the 3 operations.
+
+The more threads we use, the less the improvement of adding new threads is worth it: passing from 2 to 12 threads (+10) divide the duration by ~4 each time (~400%), but passing from 30 to 46 (+16) doesn't improve that much the execution time (~2%).
+
 
 ## Linearization points
 
@@ -155,8 +171,14 @@ I created an `Operation` class containing
 * the value related (integer) 
 * the nano time at which it happened
 
+### First Method
+
 To check that the operations can be linearized, we sort the operation list. 
 Then we follow operation by operation the result of a linear execution and the compare with the results of the operations. 
+
+This is our own method to test linearizability, the operations are stored in a `ConcurrentLinkedQueue`, providing a wait-free `add` that can be called by every threads.
+
+In order to run parallel operations, we are using `population.parallelStream().forEach()`, with a pre-built population, so that the test are using the exact same population.
 
 For a small set of operation, we can output traces like:
 
@@ -213,39 +235,31 @@ For a small set of operation, we can output traces like:
         at 7079866531252507     remove  false   (1)
 ```
 This execution is fine (linearized without obvious errors), but some others that we tried add errors, mostly on `contains` returning false while the element was in the list. 
+
 I may come from the fact that `nanoTime` is not atomic with the linearization point itself.
 
-### How to reproduce
+**How to reproduce**
 
 ```
 java Main linear
 ```
 
-### Using lock
+### Second method, using a lock
 
 We added a possibility to use a global lock, so that the measurement of the execution time and the linearization point are atomic. 
 
 After tracing with some small and large amount of operations (for 50 to 100'000), we haven't encounter errors in the linearization (we check that programmatically)
 
 
-#### How to reproduce
+**How to reproduce**
 
-**The small amount of operation (50)** :
+The small amount of operations (50) :
 ```
 java Main linear-lock 
 ```
 
-**The large amount of operation (100000)** :
+The large amount of operations (100000) :
 ```
 java Main large-linear-lock 
 ```
 
-### Lock-free, personal method
-
-The idea of the method, is to measure tow times: just before the linearization point and just after, so that we are sure that the linearization point is in-between.
-
-Doing that, we can check errors and insert a tolerance.
-
-For example, if a "contains(a)" starts before an "add(a)" and finishies after, both "true" and "false" values will be considered as acceptables.
-
-But finally checking the correctness of the sequence is a really difficult problem, including large graphs

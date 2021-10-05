@@ -7,12 +7,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  * Code from H&S
  */
 
-public class LinearLockfreeConcurrentSkipListSet<T> {
+public class LockedSkipListSet<T> {
     // Max level
     static final int MAX_LEVEL = 10;
-
-    // Do we use lock to measure linearization points
-    public static boolean useLock = false;
 
     // probability for randomLevel method (probability of haaving a 0)
     private static final double P = 0.75;
@@ -38,9 +35,9 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
         return Math.min(lvl, MAX_LEVEL);
     }
 
-    public LinearLockfreeConcurrentSkipListSet() {
+    public LockedSkipListSet() {
         for (int i = 0; i < head.next.length; i++) {
-            head.next[i] = new AtomicMarkableReference<LinearLockfreeConcurrentSkipListSet.Node<T>>(tail, false);
+            head.next[i] = new AtomicMarkableReference<LockedSkipListSet.Node<T>>(tail, false);
         }
     }
 
@@ -57,15 +54,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
 
         while (true) {
             boolean found;
-            if (useLock) {
-                synchronized (operations) {
-                    found = find(x, preds, succs);
-                    if (found) {
-                        Operation<T> op = new Operation<T>("add", false, x);
-                        operations.offer(op);
-                    }
-                }
-            } else {
+            synchronized (operations) {
                 found = find(x, preds, succs);
                 if (found) {
                     Operation<T> op = new Operation<T>("add", false, x);
@@ -93,15 +82,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
                 // Set the 'next' of the predecessor to the new node, if was still the found
                 // 'succesor'
                 // Otherwise restart process
-                if (useLock) {
-                    synchronized (operations) {
-                        if (!pred.next[bottomLevel].compareAndSet(succ, newNode, false, false)) {
-                            continue;
-                        }
-                        Operation<T> op = new Operation<T>("add", true, x);
-                        operations.offer(op);
-                    }
-                } else {
+                synchronized (operations) {
                     if (!pred.next[bottomLevel].compareAndSet(succ, newNode, false, false)) {
                         continue;
                     }
@@ -132,15 +113,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
         Node<T> succ;
         while (true) {
             boolean found;
-            if (useLock) {
-                synchronized (operations) {
-                    found = find(x, preds, succs);
-                    if (!found) {
-                        Operation<T> op = new Operation<T>("remove", false, x);
-                        operations.offer(op);
-                    }
-                }
-            } else {
+            synchronized (operations) {
                 found = find(x, preds, succs);
                 if (!found) {
                     Operation<T> op = new Operation<T>("remove", false, x);
@@ -163,22 +136,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
                 boolean[] marked = { false };
                 succ = nodeToRemove.next[bottomLevel].get(marked);
                 while (true) {
-                    if (useLock) {
-                        synchronized (operations) {
-                            boolean iMarkedIt = nodeToRemove.next[bottomLevel].compareAndSet(succ, succ, false, true);
-                            succ = succs[bottomLevel].next[bottomLevel].get(marked);
-                            if (iMarkedIt) {
-                                Operation<T> op = new Operation<T>("remove", true, x);
-                                operations.offer(op);
-                                find(x, preds, succs);
-                                return true;
-                            } else if (marked[0]) {
-                                Operation<T> op = new Operation<T>("remove", false, x);
-                                operations.offer(op);
-                                return false;
-                            }
-                        }
-                    } else {
+                    synchronized (operations) {
                         boolean iMarkedIt = nodeToRemove.next[bottomLevel].compareAndSet(succ, succ, false, true);
                         succ = succs[bottomLevel].next[bottomLevel].get(marked);
                         if (iMarkedIt) {
@@ -192,6 +150,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
                             return false;
                         }
                     }
+
                 }
             }
         }
@@ -238,28 +197,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
         boolean[] marked = { false };
         Node<T> pred = head, curr = null, succ = null;
 
-        if (useLock) {
-            synchronized (operations) {
-                for (int level = MAX_LEVEL; level >= bottomLevel; level--) {
-                    curr = pred.next[level].getReference(); // Replace with pred ?
-                    while (true) {
-                        succ = curr.next[level].get(marked);
-                        while (marked[0]) {
-                            curr = pred.next[level].getReference();
-                            succ = curr.next[level].get(marked);
-                        }
-                        if (curr.key < v) {
-                            pred = curr;
-                            curr = succ;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                Operation<T> op = new Operation<T>("cont.", (curr.key == v), x);
-                operations.offer(op);
-            }
-        } else {
+        synchronized (operations) {
             for (int level = MAX_LEVEL; level >= bottomLevel; level--) {
                 curr = pred.next[level].getReference(); // Replace with pred ?
                 while (true) {
@@ -279,11 +217,12 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
             Operation<T> op = new Operation<T>("cont.", (curr.key == v), x);
             operations.offer(op);
         }
+
         return (curr.key == v);
     }
 
     public String stringify() {
-        String result = "LinearLockfreeConcurrentSkipListSet {";
+        String result = "LockedSkipListSet {";
 
         int bottomLevel = 0;
         final int lastValue = Integer.MAX_VALUE;
@@ -358,12 +297,12 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
     }
 
     public boolean isLinearisable() {
-        
+
         // Array list of operations, that may be sorted
         List<Operation<T>> list = new ArrayList<>();
         list.addAll(operations);
 
-        // Sort the list by time 
+        // Sort the list by time
         Collections.sort(list);
 
         // Current content of the set (during execution)
@@ -381,7 +320,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
                     real = currentList.add(op.value);
                     if (real != op.result) {
                         return false;
-                    } 
+                    }
                     break;
                 case "remove":
                     real = currentList.remove(op.value);
@@ -395,7 +334,9 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
     }
 
     /**
-     * Compute the operations saved and build a string retracing the execution as a linear one
+     * Compute the operations saved and build a string retracing the execution as a
+     * linear one
+     * 
      * @return String - the description of the operations
      */
     public String operationsString() {
@@ -404,7 +345,7 @@ public class LinearLockfreeConcurrentSkipListSet<T> {
         List<Operation<T>> list = new ArrayList<>();
         list.addAll(operations);
 
-        // Sort the list by time 
+        // Sort the list by time
         Collections.sort(list);
 
         // Current content of the set (during execution)
