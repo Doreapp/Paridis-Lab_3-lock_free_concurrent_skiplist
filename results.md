@@ -3,11 +3,16 @@
 Tests are executed on *Tegner*.
 
 **We are using a P of 0.75, and not 0.50 as described into the slide.**
-It seems faster, and as we are consistent between the different tests, so we estimated that it won't change the overall observations.
+It seems faster, and as we are consistent between the different tests, we estimated that it won't change the overall observations.
 
 *Note*: The P is the probability to have 0 as `topLevel`
 
 ## Tests with 2 populations 
+
+We are generating two different population randomly, with different distribution.
+To calculate values about the distribution, we are storing the generated values in a `LinkedList` as well as in the `SkipListSet` class.
+
+See `populationTest` method in `Main.java` for more details
 
 ### First population
 
@@ -25,7 +30,7 @@ java Main first
 
 **Results**
 
-* Execution time: `36.9s`
+* Execution time : `36.9s`
 * Mean: `5.0003*10^6`
     * Expected Mean: `5*10^6` 
 * Variance: `8.335 * 10^12`
@@ -60,9 +65,9 @@ java Main second
 
 We first build the two populations with 10^6 elements.
 
-Then for each combination, we fill a new list with a population, and run the test.
+Then for each combination, we fill a new list with one of the population, and run the test.
 
-We test each distribution with the 2 random distribution of numbers (uniform and normal). We request for a total of 10^6 operations.
+For each population, the random generator used for the additionnal operations are related. It means that for the population created from the normal-random generator, the threads will use normal-random generator for the operations
 
 **How to reproduce**
 
@@ -71,11 +76,9 @@ java Main threads
 ```
 
 ### Distribution 1
-* 10% add
-* 10% remove
-* 80% contains
+10% add, 10% remove, 80% contains
 
-#### First population
+*First population*:
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 182.87s                  |
@@ -83,7 +86,7 @@ java Main threads
 | 30                      | 46.08s                  |
 | 46                      | 44.84s                  |
 
-#### Second population
+*Second population*:
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 221.79s                  |
@@ -92,11 +95,9 @@ java Main threads
 | 46                      | 44.33s                  |
 
 ### Distribution 2
-* 50% add
-* 50% remove
-* 0% contains
+50% add, 50% remove, 0% contains
 
-#### First population
+*First population*:
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 244.96s                  |
@@ -104,7 +105,7 @@ java Main threads
 | 30                      | 50.66s                  |
 | 46                      | 49.38s                  |
 
-#### Second population
+*Second population*: 
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 247.65s                  |
@@ -113,11 +114,9 @@ java Main threads
 | 46                      | 53.0s                  |
 
 ### Distribution 3
-* 25% add
-* 25% remove
-* 50% contains
+25% add, 25% remove, 50% contains
 
-#### First population
+*First population*: 
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 221.6s                  |
@@ -125,7 +124,7 @@ java Main threads
 | 30                      | 46.74s                  |
 | 46                      | 46.42s                  |
 
-#### Second population
+*Second population*: 
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 215.34s                  |
@@ -134,11 +133,9 @@ java Main threads
 | 46                      | 48.11s                  |
 
 ### Distribution 4
-* 5% add
-* 5% remove
-* 90% contains
+5% add, 5% remove, 90% contains
 
-#### First population
+*First population*: 
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 212.79s                  |
@@ -146,7 +143,7 @@ java Main threads
 | 30                      | 44.51s                  |
 | 46                      | 44.21s                  |
 
-#### Second population
+*Second population*: 
 | Number of threads       | Average time            |
 |-------------------------|-------------------------|
 | 2                      | 218.96s                  |
@@ -156,7 +153,7 @@ java Main threads
 
 ### Conclusions
 
-The second population requires more time for `add` and `remove` operations than the first population. However, `contains` operation seems to handle both population the same way.
+The second population requires more time for `add` and `remove` operations than the first population. However, `contains` operation seems to handle both populations the same way.
 
 `contains` operation is the quickest of the 3 operations.
 
@@ -165,20 +162,24 @@ The more threads we use, the less the improvement of adding new threads is worth
 
 ## Linearization points
 
-I created an `Operation` class containing 
+We created an `Operation` class containing 
 * a name describing the operation ("add","remove" or "cont.")
 * the result value of the operation (true or false)
 * the value related (integer) 
 * the nano time at which it happened
 
-### First Method
+Rather than just printing the time, we built a way to store the operations with their related time. Doing that we built our own method to check the linearizability of the SkipListSet. Indeed, for the [First method](#first-method), we are storing the operations in data structure owned by the skiplist itself.
 
-To check that the operations can be linearized, we sort the operation list. 
-Then we follow operation by operation the result of a linear execution and the compare with the results of the operations. 
+### First method
 
-This is our own method to test linearizability, the operations are stored in a `ConcurrentLinkedQueue`, providing a wait-free `add` that can be called by every threads.
+First, we store each operation in a `ConcurrentLinkedQueue`. This class offered by java provide a wait-free `add`, that can be called by several threads.
 
-In order to run parallel operations, we are using `population.parallelStream().forEach()`, with a pre-built population, so that the test are using the exact same population.
+Then, after every operations are finished, we sort the operation list by time. 
+
+Finally, we follow operation by operation the result of a linear execution and the compare with the results of the operations. 
+To do that, we are using a `Set` and reproducing the operations, to check that the result is correct. 
+
+In order to run parallel operations, we are using `population.parallelStream().forEach()`, with a pre-built population, so that the test are using the exact same population. We are using 33% of each operation (`add`, `contains` and `remove`)
 
 For a small set of operation, we can output traces like:
 
@@ -234,7 +235,8 @@ For a small set of operation, we can output traces like:
         at 7079866530279260     cont.   false   (15)
         at 7079866531252507     remove  false   (1)
 ```
-This execution is fine (linearized without obvious errors), but some others that we tried add errors, mostly on `contains` returning false while the element was in the list. 
+
+This execution is fine (linearized without obvious errors), but some others executions had errors, mostly on `contains` returning false while the element was in the list. 
 
 I may come from the fact that `nanoTime` is not atomic with the linearization point itself.
 
@@ -246,10 +248,9 @@ java Main linear
 
 ### Second method, using a lock
 
-We added a possibility to use a global lock, so that the measurement of the execution time and the linearization point are atomic. 
+We added a global lock, so that the measurement of the execution time and the linearization point are atomic. 
 
-After tracing with some small and large amount of operations (for 50 to 100'000), we haven't encounter errors in the linearization (we check that programmatically)
-
+After tracing with some small and large amount of operations (from 50 to 100'000), we haven't encounter errors in the linearization.
 
 **How to reproduce**
 
@@ -263,3 +264,244 @@ The large amount of operations (100000) :
 java Main large-linear-lock 
 ```
 
+### Third method, one counter by thread
+
+The idea here is to add a counter owned by each thread, so that we do not need to use a concurrent data structure.
+
+We tested this method with different number of operations, different distributions and different number of thread. The results are bellow
+
+**Running with 10 operations**
+
+*Distribution 1*: 10% add, 10% remove, 80% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 2*: 50% add, 50% remove, 0% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 3*: 25% add, 25% remove, 50% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 4*: 5% add, 5% remove, 90% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+**Running with 100 operations**
+
+*Distribution 1*: 10% add, 10% remove, 80% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 2*: 50% add, 50% remove, 0% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 3*: 25% add, 25% remove, 50% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 4*: 5% add, 5% remove, 90% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+**Running with 1000 operations**
+
+*Distribution 1*: 10% add, 10% remove, 80% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 2*: 50% add, 50% remove, 0% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 3*: 25% add, 25% remove, 50% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 4*: 5% add, 5% remove, 90% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+**Running with 10000 operations**
+
+*Distribution 1*: 10% add, 10% remove, 80% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 2*: 50% add, 50% remove, 0% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 3*: 25% add, 25% remove, 50% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 4*: 5% add, 5% remove, 90% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+**Running with 100000 operations**
+
+*Distribution 1*: 10% add, 10% remove, 80% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 2*: 50% add, 50% remove, 0% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 3*: 25% add, 25% remove, 50% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 4*: 5% add, 5% remove, 90% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+**Running with 1000000 operations**
+
+*Distribution 1*: 10% add, 10% remove, 80% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 2*: 50% add, 50% remove, 0% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 3*: 25% add, 25% remove, 50% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+*Distribution 4*: 5% add, 5% remove, 90% contains
+
+| Number of threads       | Linearisation test      |
+|-------------------------|-------------------------|
+| 2                      | PASS              |
+| 12                      | PASS              |
+| 30                      | PASS              |
+| 46                      | PASS              |
+
+**Conclusions**
+
+Every tests passed. By experience, sometime tests failed (on my own computer), once again probably because of the measurment not being atomic.
+
+### Conclusions
+
+After those three tests, the skip list seems linearizable, even if we cannot be 100% sure about it. 
