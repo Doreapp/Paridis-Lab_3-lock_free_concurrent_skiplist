@@ -296,6 +296,10 @@ public class LockedSkipListSet<T> {
         }
     }
 
+    /**
+     * Check if the execution is linearisable
+     * @return
+     */
     public boolean isLinearisable() {
 
         // Array list of operations, that may be sorted
@@ -389,6 +393,9 @@ public class LockedSkipListSet<T> {
         return result;
     }
 
+    /**
+     * Operation class, representing a timestamped operation on the list
+     */
     private static class Operation<T> implements Comparable {
         long time = -1;
         String name = "";

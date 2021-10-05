@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.*;
  */
 
 public class LockfreeConcurrentSkipListSet<T> {
-    // Max level: TODO choose and understand...
+    // Max level: 
     static final int MAX_LEVEL = 10; 
 
     // probability for randomLevel method (probability of haaving a 0)
@@ -23,8 +23,7 @@ public class LockfreeConcurrentSkipListSet<T> {
      * Should validate "The randomLevel() method is designed based on empirical
      * measurements to maintain the skiplist property."
      * 
-     * TODO understand better
-     * @return
+     * @return level
      */
     public static int randomLevel() {
         int lvl = (int) (Math.log(1. - Math.random()) / Math.log(1. - P));

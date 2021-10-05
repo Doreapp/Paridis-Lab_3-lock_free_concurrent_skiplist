@@ -15,7 +15,7 @@ public class Main {
     public static void printHelp() {
         System.out.println("    Usage:");
         System.out.println(
-                "        java Main [-h | first | second | threads | linear | linear-lock | large-linear-lock | all | tests]");
+                "        java Main [-h | first | second | threads | linear | linear-lock | large-linear-lock | threaded-counter | all | tests]");
         System.out.println("            -h : print this help message");
         System.out.println("            first : start the first (population) test");
         System.out.println("            second : start the second (population) test");
@@ -25,6 +25,7 @@ public class Main {
         System.out.println("            linear-lock : start the linearization test, using lock to prevent errors");
         System.out.println(
                 "            large-linear-lock : start the linearization test, using a lock, and testing on a larger population");
+        System.out.println("            threaded-counter : Start the linearization test with a counter by thread");
         System.out.println("            all : Start all tests (first, second, threads)");
         System.out.println("            tests : run some aritary tests to understand the set");
     }
@@ -78,6 +79,9 @@ public class Main {
             linearizationTestLock(false);
             linearizationTestLock(true);
             threadedCounterLinearisation();
+        } else {
+            System.err.println("Unknown argument "+args[0]+"\n");
+            printHelp();
         }
 
     }
@@ -111,7 +115,7 @@ public class Main {
      */
     public static class SecondGenerator implements Generator {
         int range;
-        private int next = -1;
+        private int next = -1; // Next integer to provide, -1 for none
 
         SecondGenerator() {
             this((int) 1e7);
@@ -159,6 +163,11 @@ public class Main {
         populationTest(generator, (int) (1e7));
     }
 
+    /**
+     * Make the population test
+     * @param generator generator to use
+     * @param length length of the array
+     */
     private static void populationTest(Generator generator, final int length) {
         System.out.println("### population test");
         System.out.println("With " + length + " members");
@@ -173,14 +182,17 @@ public class Main {
 
         for (int i = 0; i < length; i++) {
             int number = generator.generate();
-            sum += number;
+            sum += number; 
+
+            // Save the value both in the witness and the actual list
             witnessList.addFirst(number);
 
             skiplist.add((Integer) number);
-            // sys.stdout.write("\033[K")
+
+            // Show progress
             if (i % 100000 == 0) {
                 if (i != 0)
-                    System.out.print("\b\b\b\b\b\b\b\b\b\b\b\b\b"); // Remove the last printed progress line
+                    flushLastLine(); // Remove the last printed progress line
                 int progress = (int) (i * 100.0 / length);
                 System.out.print("Progress: " + (progress < 10 ? "0" + progress : progress) + "%");
             }
@@ -188,6 +200,7 @@ public class Main {
 
         System.out.println();
 
+        // Print the results
         long duration = System.nanoTime() - tsStart;
         System.out.println("**Results**");
         System.out.println("* Execution time: `" + ((int) (duration / 10_000_000) / 100.00) + "s`");
@@ -206,13 +219,20 @@ public class Main {
         System.out.println("* Variance: `" + variance + "`");
     }
 
+    /**
+     * Execute the thread tests (with both populations)
+     */
     private static void threadedTests() {
         System.out.println("## Tests with Several threads");
 
+        // Number of operations
         int operationCount = (int) 1e6;
+
+        // Distributions (%age of add, remove and contains)
         int[][] distributions = { { 10, 10, 80 }, { 50, 50, 0 }, { 25, 25, 50 }, { 5, 5, 90 }, };
         int[] threadCounts = { 2, 12, 30, 46 };
 
+        // Build populations 
         System.out.println("Building populations");
         Set<Integer> firstPopulation = new HashSet<>();
         Generator generator = new FirstGenerator();
@@ -239,6 +259,7 @@ public class Main {
                 System.out.println("|-------------------------|-------------------------|");
 
                 for (int threadCount : threadCounts) {
+                    // Execute 10 times the test, in order to have an average of the execution time
                     long totalDuration = 0;
                     for (int exec = 0; exec < 10; exec++) {
                         ThreadedTests test = new ThreadedTests(threadCount, operationCount, distribution[0],
@@ -246,10 +267,7 @@ public class Main {
                         test.fillUpListWithSet(generatorType == 0 ? firstPopulation : secondPopulation);
                         long duration = test.run(generatorType);
                         totalDuration += duration;
-                        // System.out.print(formatNano(duration) + " ");
                     }
-                    // System.out.println("Total duration: " + formatNano(totalDuration));
-                    // System.out.println("Average duration: " + formatNano(totalDuration / 10L));
                     String timeS = (totalDuration / 1_000_000L) / 100.0 + "s";
                     System.out.println("| " + threadCount + "                      | " + timeS + "                  |");
                 }
@@ -258,15 +276,20 @@ public class Main {
         }
     }
 
+    /**
+     * Execute the first linearization test, with the shared counter
+     */
     private static void linearizationTest() {
         Generator generator = new FirstGenerator(20);
         LinearSkipListSet<Integer> skipListSet = new LinearSkipListSet<>();
 
+        // Fill a population
         LinkedList<Integer> population = new LinkedList<>();
         for (int i = 0; i < 50; i++) {
             population.offer(generator.generate());
         }
 
+        // Parallel execution of random operations
         population.parallelStream().forEach((i) -> {
             double rand = Math.random();
             if (rand < 0.333) {
@@ -278,17 +301,24 @@ public class Main {
             }
         });
 
+        // Print results
         System.out.println("## Linearization points");
         System.out.println("```");
         System.out.println("\n" + skipListSet.operationsString());
         System.out.println("```");
     }
 
+    /**
+     * Remove current line on the console (System.out)
+     */
     private static void flushLastLine() {
         System.out.print(
                 "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
     }
 
+    /**
+     * Utils class to counter progress and display it on a single line
+     */
     private static class ProgressCounter {
         volatile int progress = 0;
         int max = 0;
@@ -300,7 +330,12 @@ public class Main {
         }
     }
 
+    /**
+     * Linearization test using a lock
+     * @param large is the test large
+     */
     private static void linearizationTestLock(boolean large) {
+        // Define constant in function of large input
         final int range = large ? 5_000 : 20;
         final int operationCount = large ? 100_000 : 50;
 
@@ -313,16 +348,19 @@ public class Main {
         Generator generator = new FirstGenerator(range);
         LockedSkipListSet<Integer> skipListSet = new LockedSkipListSet<>();
 
+        // Build population
         System.out.print("Building population...");
-
         LinkedList<Integer> population = new LinkedList<>();
         for (int i = 0; i < operationCount; i++) {
             population.offer(generator.generate());
         }
 
+        // Build counter
         flushLastLine();
         final ProgressCounter counter = new ProgressCounter();
         counter.max = operationCount;
+
+        // Start execution
         System.out.print("Executing operations...");
         population.parallelStream().forEach((i) -> {
             double rand = Math.random();
@@ -338,16 +376,16 @@ public class Main {
         });
         flushLastLine();
 
-        System.out.print("Building linear execution...");
-        flushLastLine();
-
+        // Display results
         if (large) {
-            if (skipListSet.isLinearisable()) {
+            // Only the success of the linearisation test when test is large
+            if (skipListSet.isLinearisable()) { 
                 System.out.println("The execution can be linearized without issue");
             } else {
                 System.out.println("A error occured during the retracing of operations!");
             }
         } else {
+            // The whole execution otherwise
             String resultDescription = skipListSet.operationsString();
             System.out.println("## Test of linearization points using a lock");
             System.out.println("Using " + operationCount + " operations, and number in a range of " + range);
@@ -357,9 +395,17 @@ public class Main {
         }
     }
 
+    /**
+     * Thired linearization test, with one counter by thread
+     */
     private static void threadedCounterLinearisation() {
+        // Operations counts
         int[] operationCounts = { (int) 1e1, (int) 1e2, (int) 1e3, (int) 1e4, (int) 1e5, (int) 1e6 };
+        
+        // Distributions of add, remove and contains
         int[][] distributions = { { 10, 10, 80 }, { 50, 50, 0 }, { 25, 25, 50 }, { 5, 5, 90 }, };
+        
+        // Thread counts
         int[] threadCounts = { 2, 12, 30, 46 };
 
         System.out.println("### With one counter by thread\n");
@@ -369,6 +415,7 @@ public class Main {
 
             int indexDistrib = 0;
             for (int[] distribution : distributions) {
+                // Display information
                 System.out.println("**Distribution " + (++indexDistrib) + "**");
                 System.out.println("* " + distribution[0] + "% add");
                 System.out.println("* " + distribution[1] + "% remove");
@@ -379,8 +426,11 @@ public class Main {
                 System.out.println("|-------------------------|-------------------------|");
 
                 for (int threadCount : threadCounts) {
+                    // Run the test
                     boolean result = CounterSkipListSet.run(threadCount, operationCount, distribution[0],
                             distribution[1], 0);
+
+                    // Display the result
                     String str = result ? "PASS" : "FAILED";
                     System.out.println("| " + threadCount + "                      | " + str + "              |");
                 }
@@ -389,6 +439,9 @@ public class Main {
         }
     }
 
+    /**
+     * Just for personnal tests
+     */
     private static void tests() {
         LockfreeConcurrentSkipListSet<Integer> set = new LockfreeConcurrentSkipListSet<>();
 

@@ -280,6 +280,11 @@ public class CounterSkipListSet<T> {
         }
     }
 
+    /**
+     * Check if the execution is linearisable
+     * 
+     * @return
+     */
     public static boolean isLinearisable(Collection<Operation<Integer>> operations) {
 
         // Array list of operations, that may be sorted
@@ -373,6 +378,9 @@ public class CounterSkipListSet<T> {
         return result;
     }
 
+    /**
+     * Operation class, representing a timestamped operation on the list
+     */
     private static class Operation<T> implements Comparable {
         long time = -1;
         String name = "";
@@ -400,13 +408,17 @@ public class CounterSkipListSet<T> {
         }
     }
 
+    /**
+     * Single thread executing some operations
+     */
     public static class Worker extends Thread {
         int addCount, removeCount, containsCount;
         Main.Generator generator;
         CounterSkipListSet<Integer> skipListSet;
         LinkedList<Operation<Integer>> operations = new LinkedList<>();
 
-        public Worker(CounterSkipListSet<Integer> skipListSet, Main.Generator generator, int addCount, int removeCount, int containsCount) {
+        public Worker(CounterSkipListSet<Integer> skipListSet, Main.Generator generator, int addCount, int removeCount,
+                int containsCount) {
             this.generator = generator;
             this.addCount = addCount;
             this.removeCount = removeCount;
@@ -439,7 +451,18 @@ public class CounterSkipListSet<T> {
         }
     }
 
-    public static boolean run(int threadCount, int operationCount, int addPercentage, int removePercentage, int generatorType) {
+    /**
+     * Run a test with several threads, that are storing their own operations
+     * 
+     * @param threadCount number of threads
+     * @param operationCount number of operations
+     * @param addPercentage percentage of add 
+     * @param removePercentage percentage of remove
+     * @param generatorType type of generator: 0 or 1
+     * @return do the test passed the test
+     */
+    public static boolean run(int threadCount, int operationCount, int addPercentage, int removePercentage,
+            int generatorType) {
         // calculate constants
         int addCount = operationCount * addPercentage / 100;
         int removeCount = removePercentage * operationCount / 100;
@@ -494,29 +517,29 @@ public class CounterSkipListSet<T> {
         // Init each worker
         for (int i = 0; i < threadCount; i++) {
             Main.Generator generator = generatorType == 0 ? new Main.FirstGenerator() : new Main.SecondGenerator();
-            workers[i] = new Worker(skipListSet, generator, threadOperations[0][i], threadOperations[1][i], threadOperations[2][i]);
+            workers[i] = new Worker(skipListSet, generator, threadOperations[0][i], threadOperations[1][i],
+                    threadOperations[2][i]);
         }
 
         // Starts all the workers
         long start = System.nanoTime();
-        for(Worker worker : workers)
+        for (Worker worker : workers)
             worker.start();
 
         // Wait for all the workers to finish
-        for(Worker worker : workers){
+        for (Worker worker : workers) {
             try {
                 worker.join();
-            } catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }
 
         long duration = System.nanoTime() - start;
-        
+
         // Merge every operations list in one
         LinkedList<Operation<Integer>> allOperations = new LinkedList<>();
-
-        for(Worker worker : workers){
+        for (Worker worker : workers) {
             allOperations.addAll(worker.operations);
         }
 
