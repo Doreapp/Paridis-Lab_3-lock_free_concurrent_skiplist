@@ -14,12 +14,17 @@ public class Main {
      */
     public static void printHelp() {
         System.out.println("    Usage:");
-        System.out.println("        java Main [-h | first | second | threads | linear | all | tests]");
+        System.out.println(
+                "        java Main [-h | first | second | threads | linear | linear-lock | large-linear-lock | all | tests]");
         System.out.println("            -h : print this help message");
         System.out.println("            first : start the first (population) test");
         System.out.println("            second : start the second (population) test");
-        System.out.println("            threads : start the third test, running with several thread /!\\ Will take time");
+        System.out
+                .println("            threads : start the third test, running with several thread /!\\ Will take time");
         System.out.println("            linear : start the linearization test");
+        System.out.println("            linear-lock : start the linearization test, using lock to prevent errors");
+        System.out.println(
+                "            large-linear-lock : start the linearization test, using a lock, and testing on a larger population");
         System.out.println("            all : Start all tests (first, second, threads)");
         System.out.println("            tests : run some aritary tests to understand the set");
     }
@@ -56,14 +61,20 @@ public class Main {
             threadedTests();
         } else if (args[0].equals("tests")) {
             tests();
-        }else if (args[0].equals("linear")) {
+        } else if (args[0].equals("linear")) {
             linearizationTest();
+        } else if (args[0].equals("linear-lock")) {
+            linearizationTestLock(false);
+        } else if (args[0].equals("large-linear-lock")) {
+            linearizationTestLock(true);
         } else if (args[0].equals("all")) {
             System.out.println("## Tests with 2 populations ");
             populationTest(new FirstGenerator());
             populationTest(new SecondGenerator());
             threadedTests();
             linearizationTest();
+            linearizationTestLock(false);
+            linearizationTestLock(true);
         }
 
     }
@@ -121,8 +132,8 @@ public class Main {
             double firstPart = Math.sqrt(-2 * Math.log(r1));
             double z1 = firstPart * Math.cos(2 * Math.PI * r2) / 5.0 + 1.0;
             double z2 = firstPart * Math.sin(2 * Math.PI * r2) / 5.0 + 1.0;
-            next = (int) (z1 * range/2);
-            int result = (int) (z2 * range/2);
+            next = (int) (z1 * range / 2);
+            int result = (int) (z2 * range / 2);
 
             if (next < 0) {
                 next = 0;
@@ -168,7 +179,7 @@ public class Main {
                 if (i != 0)
                     System.out.print("\b\b\b\b\b\b\b\b\b\b\b\b\b"); // Remove the last printed progress line
                 int progress = (int) (i * 100.0 / length);
-                System.out.print("Progress: " + (progress < 10 ? "0"+progress : progress) + "%");
+                System.out.print("Progress: " + (progress < 10 ? "0" + progress : progress) + "%");
             }
         }
 
@@ -176,7 +187,7 @@ public class Main {
 
         long duration = System.nanoTime() - tsStart;
         System.out.println("**Results**");
-        System.out.println("* Execution time: `" + ((int) (duration/10_000_000) / 100.00) + "s`");
+        System.out.println("* Execution time: `" + ((int) (duration / 10_000_000) / 100.00) + "s`");
 
         final double mean = sum / length;
 
@@ -188,8 +199,8 @@ public class Main {
         }
         final double variance = squaredDifferencesSum / length;
 
-        System.out.println("* Mean: `"+mean+"`");
-        System.out.println("* Variance: `"+variance+"`");
+        System.out.println("* Mean: `" + mean + "`");
+        System.out.println("* Variance: `" + variance + "`");
     }
 
     private static void threadedTests() {
@@ -247,15 +258,15 @@ public class Main {
     private static void linearizationTest() {
         Generator generator = new FirstGenerator(20);
         LinearLockfreeConcurrentSkipListSet<Integer> skipListSet = new LinearLockfreeConcurrentSkipListSet<>();
-        
+
         LinkedList<Integer> population = new LinkedList<>();
-        for(int i = 0; i < 50; i++){
+        for (int i = 0; i < 50; i++) {
             population.offer(generator.generate());
         }
 
         population.parallelStream().forEach((i) -> {
             double rand = Math.random();
-            if(rand < 0.333){
+            if (rand < 0.333) {
                 skipListSet.add(i);
             } else if (rand < 0.667) {
                 skipListSet.remove(i);
@@ -266,8 +277,83 @@ public class Main {
 
         System.out.println("## Linearization points");
         System.out.println("```");
-        System.out.println("\n"+skipListSet.operationsString());
+        System.out.println("\n" + skipListSet.operationsString());
         System.out.println("```");
+    }
+
+    private static void flushLastLine() {
+        System.out.print(
+                "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b");
+    }
+
+    private static class ProgressCounter {
+        volatile int progress = 0;
+        int max = 0;
+
+
+        public void printProgress() {
+            // Not the first
+            flushLastLine();
+            System.out.print(((int)(progress*1000/max)/10.0)+"%");
+        }
+    }
+
+    private static void linearizationTestLock(boolean large) {
+        final int range = large ? 5_000 : 20;
+        final int operationCount = large ? 100_000 : 50;
+
+        if (large) {
+            System.out.println("### Large test of linearization with lock");
+            System.out.println("Using " + operationCount + " operations, and number in a range of " + range);
+            System.out.println();
+        }
+
+        Generator generator = new FirstGenerator(range);
+        LinearLockfreeConcurrentSkipListSet.useLock = true;
+        LinearLockfreeConcurrentSkipListSet<Integer> skipListSet = new LinearLockfreeConcurrentSkipListSet<>();
+
+        System.out.print("Building population...");
+
+        LinkedList<Integer> population = new LinkedList<>();
+        for (int i = 0; i < operationCount; i++) {
+            population.offer(generator.generate());
+        }
+
+        flushLastLine();
+        final ProgressCounter counter = new ProgressCounter();
+        counter.max = operationCount;
+        System.out.print("Executing operations...");
+        population.parallelStream().forEach((i) -> {
+            double rand = Math.random();
+            if (rand < 0.333) {
+                skipListSet.add(i);
+            } else if (rand < 0.667) {
+                skipListSet.remove(i);
+            } else {
+                skipListSet.contains(i);
+            }
+            ++counter.progress;
+            counter.printProgress();
+        });
+        flushLastLine();
+
+        System.out.print("Building linear execution...");
+        flushLastLine();
+
+        if (large) {
+            if (skipListSet.isLinearisable()) {
+                System.out.println("The execution can be linearized without issue");
+            } else {
+                System.out.println("A error occured during the retracing of operations!");
+            }
+        } else {
+            String resultDescription = skipListSet.operationsString();
+            System.out.println("## Test of linearization points using a lock");
+            System.out.println("Using " + operationCount + " operations, and number in a range of " + range);
+            System.out.println("```");
+            System.out.println(resultDescription);
+            System.out.println("```");
+        }
     }
 
     private static void tests() {

@@ -150,67 +150,102 @@ Then for each combination, we fill a new List with a population, and run the tes
 ## Linearization points
 
 I created an `Operation` class containing 
-* a name describing the operation (like "add failed")
+* a name describing the operation ("add","remove" or "cont.")
+* the result value of the operation (true or false)
 * the value related (integer) 
 * the nano time at which it happened
 
-Finally, after sorting the operations made by time, we optained an ordered listing of the operations.
+To check that the operations can be linearized, we sort the operation list. 
+Then we follow operation by operation the result of a linear execution and the compare with the results of the operations. 
 
-Here is one of the outputs:
+For a small set of operation, we can output traces like:
+
 ```
-        at 921496718786200      add     true    (0)     [0,]
-        at 921496718793800      remove  false   (3)
-        at 921496718803500      cont.   false   (4)
-        at 921496718805200      cont.   false   (2)
-        at 921496719064700      remove  false   (8)
-        at 921496719163500      remove  false   (10)
-        at 921496719168700      add     true    (8)     [0,8,]
-        at 921496719178600      cont.   false   (16)
-        at 921496719184300      add     true    (17)    [0,8,17,]
-        at 921496719207200      add     true    (15)    [0,8,17,15,]
-        at 921496719216300      remove  false   (3)
-        at 921496719225900      add     false   (0)
-        at 921496719254700      add     true    (11)    [0,8,17,15,11,]
-        at 921496719464300      add     true    (4)     [0,8,17,15,11,4,]
-        at 921496719482800      remove  false   (16)
-        at 921496719622700      add     false   (4)
-        at 921496719635800      remove  false   (2)
-        at 921496719639900      add     false   (11)
-        at 921496719653800      remove  false   (2)
-        at 921496719661600      remove  false   (2)
-        at 921496719661800      add     true    (1)     [0,8,17,15,11,4,1,]
-        at 921496719679700      add     true    (18)    [0,8,17,15,11,4,1,18,]
-        at 921496719681100      cont.   false   (7)
-        at 921496719691900      remove  false   (10)
-        at 921496719700100      cont.   false   (7)
-        at 921496719716500      add     false   (1)
-        at 921496719726100      cont.   true    (15)
-        at 921496719728200      add     true    (13)    [0,8,17,15,11,4,1,18,13,]
-        at 921496719730500      remove  true    (15)    [0,8,17,11,4,1,18,13,]
-        at 921496719732900      cont.   true    (1)
-        at 921496719746300      cont.   false   (7)
-        at 921496719746300      cont.   false   (19)
-        at 921496719754800      remove  false   (9)
-        at 921496719757000      remove  false   (10)
-        at 921496719761400      cont.   true    (8)
-        at 921496719764700      add     false   (11)
-        at 921496719773100      cont.   false   (2)
-        at 921496719775700      cont.   true    (13)
-        at 921496719780900      add     false   (1)
-        at 921496719783200      cont.   false   (12)
-        at 921496719785200      add     true    (2)     [0,8,17,11,4,1,18,13,2,]
-        at 921496719787900      cont.   false   (10)
-        at 921496719798700      add     false   (8)
-        at 921496719801700      add     true    (15)    [0,8,17,11,4,1,18,13,2,15,]
-        at 921496719836800      cont.   false   (10)
-        at 921496719857900      add     false   (8)
-        at 921496719858300      cont.   true    (13)
-        at 921496719868200      remove  false   (7)
-        at 921496719869700      cont.   false   (12)
-        at 921496719878100      cont.   false   (12)
+        at 7079866528218087     cont.   false   (0)
+        at 7079866528274496     remove  false   (19)
+        at 7079866528297523     cont.   false   (3)
+        at 7079866528360520     cont.   false   (2)
+        at 7079866528383544     cont.   false   (12)
+        at 7079866528421596     add     true    (15)    [15,]
+        at 7079866528435495     cont.   false   (9)
+        at 7079866528442838     cont.   false   (19)
+        at 7079866528454039     remove  false   (16)
+        at 7079866528456420     cont.   false   (17)
+        at 7079866528466422     remove  false   (10)
+        at 7079866528467843     remove  false   (10)
+        at 7079866528491485     add     true    (3)     [15,3,]
+        at 7079866528492173     add     false   (15)
+        at 7079866528493635     cont.   false   (12)
+        at 7079866528517929     cont.   false   (7)
+        at 7079866528518695     remove  true    (3)     [15,]
+        at 7079866528529483     cont.   false   (5)
+        at 7079866528537843     remove  false   (8)
+        at 7079866528539729     remove  false   (18)
+        at 7079866528557753     remove  false   (12)
+        at 7079866528562800     add     true    (2)     [15,2,]
+        at 7079866528576547     remove  false   (13)
+        at 7079866528584783     remove  false   (3)
+        at 7079866528589282     add     true    (7)     [15,2,7,]
+        at 7079866528594477     cont.   false   (3)
+        at 7079866528605741     cont.   false   (4)
+        at 7079866528607693     add     true    (11)    [15,2,7,11,]
+        at 7079866528616567     add     true    (18)    [15,2,7,11,18,]
+        at 7079866528622215     remove  false   (1)
+        at 7079866528642155     cont.   false   (5)
+        at 7079866528643415     add     true    (5)     [15,2,7,11,18,5,]
+        at 7079866528644465     cont.   true    (18)
+        at 7079866528647791     remove  false   (16)
+        at 7079866528667057     add     false   (18)
+        at 7079866528672269     add     true    (16)    [15,2,7,11,18,5,16,]
+        at 7079866529409476     add     true    (8)     [15,2,7,11,18,5,16,8,]
+        at 7079866529409562     add     true    (17)    [15,2,7,11,18,5,16,8,17,]
+        at 7079866530019525     cont.   false   (13)
+        at 7079866530031476     remove  true    (15)    [2,7,11,18,5,16,8,17,]
+        at 7079866530031646     remove  true    (17)    [2,7,11,18,5,16,8,]
+        at 7079866530111658     cont.   false   (6)
+        at 7079866530125870     add     true    (9)     [2,7,11,18,5,16,8,9,]
+        at 7079866530214517     cont.   false   (15)
+        at 7079866530218159     remove  false   (10)
+        at 7079866530221502     add     false   (16)
+        at 7079866530223904     cont.   false   (1)
+        at 7079866530279016     cont.   true    (11)
+        at 7079866530279260     cont.   false   (15)
+        at 7079866531252507     remove  false   (1)
 ```
-
-You can follow the list content at the right of the lines.
-
-Note that this execution is fine (linearized without obvious errors), but some others that we tried add errors, mostly on `contains` returning false while the element was in the list. 
+This execution is fine (linearized without obvious errors), but some others that we tried add errors, mostly on `contains` returning false while the element was in the list. 
 I may come from the fact that `nanoTime` is not atomic with the linearization point itself.
+
+### How to reproduce
+
+```
+java Main linear
+```
+
+### Using lock
+
+We added a possibility to use a global lock, so that the measurement of the execution time and the linearization point are atomic. 
+
+After tracing with some small and large amount of operations (for 50 to 100'000), we haven't encounter errors in the linearization (we check that programmatically)
+
+
+#### How to reproduce
+
+**The small amount of operation (50)** :
+```
+java Main linear-lock 
+```
+
+**The large amount of operation (100000)** :
+```
+java Main large-linear-lock 
+```
+
+### Lock-free, personal method
+
+The idea of the method, is to measure tow times: just before the linearization point and just after, so that we are sure that the linearization point is in-between.
+
+Doing that, we can check errors and insert a tolerance.
+
+For example, if a "contains(a)" starts before an "add(a)" and finishies after, both "true" and "false" values will be considered as acceptables.
+
+But finally checking the correctness of the sequence is a really difficult problem, including large graphs
