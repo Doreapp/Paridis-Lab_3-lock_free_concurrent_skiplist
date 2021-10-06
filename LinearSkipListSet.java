@@ -1,21 +1,26 @@
 import java.util.concurrent.atomic.*;
+import java.util.concurrent.locks.Lock;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Code from H&S
  */
 
-public class LockfreeConcurrentSkipListSet<T> {
-    // Max level: 
-    static final int MAX_LEVEL = 10; 
+public class LinearSkipListSet<T> {
+    // Max level
+    static final int MAX_LEVEL = 10;
 
     // probability for randomLevel method (probability of haaving a 0)
-    private static final double P = 0.75;  
+    private static final double P = 0.75;
 
-    // <A> Head of the list, first element ? 
+    // <A> Head of the list, first element ?
     final Node<T> head = new Node<T>(Integer.MIN_VALUE);
-    
+
     // <A> Tail of the list, last element ?
     final Node<T> tail = new Node<T>(Integer.MAX_VALUE);
+
+    ConcurrentLinkedQueue<Operation<T>> operations = new ConcurrentLinkedQueue<>();
 
     /**
      * Implementation found at
@@ -23,16 +28,16 @@ public class LockfreeConcurrentSkipListSet<T> {
      * Should validate "The randomLevel() method is designed based on empirical
      * measurements to maintain the skiplist property."
      * 
-     * @return level
+     * @return a level between 0 and MAX_LEVEL
      */
     public static int randomLevel() {
         int lvl = (int) (Math.log(1. - Math.random()) / Math.log(1. - P));
         return Math.min(lvl, MAX_LEVEL);
     }
 
-    public LockfreeConcurrentSkipListSet() {
+    public LinearSkipListSet() {
         for (int i = 0; i < head.next.length; i++) {
-            head.next[i] = new AtomicMarkableReference<LockfreeConcurrentSkipListSet.Node<T>>(tail, false);
+            head.next[i] = new AtomicMarkableReference<LinearSkipListSet.Node<T>>(tail, false);
         }
     }
 
@@ -46,10 +51,14 @@ public class LockfreeConcurrentSkipListSet<T> {
         // <A> Predecessors and successors of the node to add
         Node<T>[] preds = (Node<T>[]) new Node[MAX_LEVEL + 1];
         Node<T>[] succs = (Node<T>[]) new Node[MAX_LEVEL + 1];
-        
+
         while (true) {
-            boolean found = find(x, preds, succs);
+            boolean found;
+
+            found = find(x, preds, succs);
             if (found) {
+                Operation<T> op = new Operation<T>("add", false, x);
+                operations.offer(op);
                 // Do not add the value as already present: end and return false
                 return false;
             } else {
@@ -61,18 +70,24 @@ public class LockfreeConcurrentSkipListSet<T> {
                     Node<T> succ = succs[level];
                     newNode.next[level].set(succ, false);
                 }
-                
+
                 // Lower (closer) predecessor and succesor
                 Node<T> pred = preds[bottomLevel];
                 Node<T> succ = succs[bottomLevel];
 
-                // Set the 'next' of the predecessor to the new node, if was still the found 'succesor'
+                // Set the 'next' of the predecessor to the new node, if was still the found
+                // 'succesor'
                 // Otherwise restart process
+
                 if (!pred.next[bottomLevel].compareAndSet(succ, newNode, false, false)) {
                     continue;
                 }
+                Operation<T> op = new Operation<T>("add", true, x);
+                operations.offer(op);
+
                 for (int level = bottomLevel + 1; level <= topLevel; level++) {
-                    // For each level, update the succesor of the previous node (until success of CAS)
+                    // For each level, update the succesor of the previous node (until success of
+                    // CAS)
                     while (true) {
                         pred = preds[level];
                         succ = succs[level];
@@ -92,8 +107,12 @@ public class LockfreeConcurrentSkipListSet<T> {
         Node<T>[] succs = (Node<T>[]) new Node[MAX_LEVEL + 1];
         Node<T> succ;
         while (true) {
-            boolean found = find(x, preds, succs);
+            boolean found;
+            found = find(x, preds, succs);
+
             if (!found) {
+                Operation<T> op = new Operation<T>("remove", false, x);
+                operations.offer(op);
                 return false;
             } else {
                 Node<T> nodeToRemove = succs[bottomLevel];
@@ -111,10 +130,15 @@ public class LockfreeConcurrentSkipListSet<T> {
                     boolean iMarkedIt = nodeToRemove.next[bottomLevel].compareAndSet(succ, succ, false, true);
                     succ = succs[bottomLevel].next[bottomLevel].get(marked);
                     if (iMarkedIt) {
+                        Operation<T> op = new Operation<T>("remove", true, x);
+                        operations.offer(op);
                         find(x, preds, succs);
                         return true;
-                    } else if (marked[0])
+                    } else if (marked[0]) {
+                        Operation<T> op = new Operation<T>("remove", false, x);
+                        operations.offer(op);
                         return false;
+                    }
                 }
             }
         }
@@ -160,6 +184,7 @@ public class LockfreeConcurrentSkipListSet<T> {
         int v = x.hashCode();
         boolean[] marked = { false };
         Node<T> pred = head, curr = null, succ = null;
+
         for (int level = MAX_LEVEL; level >= bottomLevel; level--) {
             curr = pred.next[level].getReference(); // Replace with pred ?
             while (true) {
@@ -176,21 +201,24 @@ public class LockfreeConcurrentSkipListSet<T> {
                 }
             }
         }
+        Operation<T> op = new Operation<T>("cont.", (curr.key == v), x);
+        operations.offer(op);
+
         return (curr.key == v);
     }
 
     public String stringify() {
-        String result = "LockfreeConcurrentSkipListSet {";
+        String result = "LinearLockfreeConcurrentSkipListSet {";
 
         int bottomLevel = 0;
         final int lastValue = Integer.MAX_VALUE;
         Node<T> pred = head, curr = null;
 
         for (int level = MAX_LEVEL; level >= bottomLevel; level--) {
-            result += "\n    "+level+": ";
+            result += "\n    " + level + ": ";
             curr = pred.next[level].getReference();
             while (curr.key < lastValue) {
-                result += curr.value+" ";
+                result += curr.value + " ";
                 curr = curr.next[level].getReference();
             }
         }
@@ -207,7 +235,8 @@ public class LockfreeConcurrentSkipListSet<T> {
         // <A> Actual stored value by the node
         final T value;
 
-        // <A> Key of the node, unique value corresponding to the stored object (actually hashcode) 
+        // <A> Key of the node, unique value corresponding to the stored object
+        // (actually hashcode)
         final int key;
 
         // <A> Array of the next node ?
@@ -220,16 +249,15 @@ public class LockfreeConcurrentSkipListSet<T> {
         public Node(int key) {
             value = null; // No value
 
-            this.key = key; 
+            this.key = key;
 
             // <A> Create the array of next node ?
             next = (AtomicMarkableReference<Node<T>>[]) new AtomicMarkableReference[MAX_LEVEL + 1];
-            
+
             // <A> Fill the 'next' array with unmarked reference to nothing (null)
             for (int i = 0; i < next.length; i++) {
                 next[i] = new AtomicMarkableReference<Node<T>>(null, false);
             }
-
 
             topLevel = MAX_LEVEL;
         }
@@ -237,7 +265,7 @@ public class LockfreeConcurrentSkipListSet<T> {
         /**
          * constructor for ordinary nodes
          * 
-         * @param x Value to store
+         * @param x      Value to store
          * @param height ?
          */
         public Node(T x, int height) {
@@ -245,12 +273,140 @@ public class LockfreeConcurrentSkipListSet<T> {
             value = x;
             key = x.hashCode();
 
-            // <A> Create the 'next' with a length of 'height', why ?? 
+            // <A> Create the 'next' with a length of 'height', why ??
             next = (AtomicMarkableReference<Node<T>>[]) new AtomicMarkableReference[height + 1];
             for (int i = 0; i < next.length; i++) {
                 next[i] = new AtomicMarkableReference<Node<T>>(null, false);
             }
             topLevel = height;
+        }
+    }
+
+    /**
+     * Check if the execution is linearisable
+     * 
+     * @return
+     */
+    public boolean isLinearisable() {
+
+        // Array list of operations, that may be sorted
+        List<Operation<T>> list = new ArrayList<>();
+        list.addAll(operations);
+
+        // Sort the list by time
+        Collections.sort(list);
+
+        // Current content of the set (during execution)
+        HashSet<T> currentList = new HashSet<>();
+
+        for (Operation<T> op : list) {
+            switch (op.name) {
+                case "cont.":
+                    boolean real = currentList.contains(op.value);
+                    if (real != op.result) {
+                        return false;
+                    }
+                    break;
+                case "add":
+                    real = currentList.add(op.value);
+                    if (real != op.result) {
+                        return false;
+                    }
+                    break;
+                case "remove":
+                    real = currentList.remove(op.value);
+                    if (real != op.result) {
+                        return false;
+                    }
+                    break;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Compute the operations saved and build a string retracing the execution as a
+     * linear one
+     * 
+     * @return String - the description of the operations
+     */
+    public String operationsString() {
+
+        // Array list of operations, that may be sorted
+        List<Operation<T>> list = new ArrayList<>();
+        list.addAll(operations);
+
+        // Sort the list by time
+        Collections.sort(list);
+
+        // Current content of the set (during execution)
+        HashSet<T> currentList = new HashSet<>();
+
+        String result = "";
+        for (Operation<T> op : list) {
+            result += "\t" + op;
+            switch (op.name) {
+                case "cont.":
+                    boolean real = currentList.contains(op.value);
+                    if (real != op.result) {
+                        result += "\tERROR";
+                    }
+                    break;
+                case "add":
+                    real = currentList.add(op.value);
+                    if (real != op.result) {
+                        result += "\tERROR";
+                    } else if (real) {
+                        result += "\t[";
+                        for (T t : currentList)
+                            result += t + ",";
+                        result += "]";
+                    }
+                    break;
+                case "remove":
+                    real = currentList.remove(op.value);
+                    if (real != op.result) {
+                        result += "\tERROR";
+                    } else if (real) {
+                        result += "\t[";
+                        for (T t : currentList)
+                            result += t + ",";
+                        result += "]";
+                    }
+                    break;
+            }
+            result += "\n";
+        }
+        return result;
+    }
+
+    /**
+     * Operation class, representing a timestamped operation on the list
+     */
+    private static class Operation<T> implements Comparable {
+        long time = -1;
+        String name = "";
+        boolean result;
+        T value;
+
+        Operation(String name, boolean result, T value) {
+            this.time = System.nanoTime();
+            this.name = name;
+            this.value = value;
+            this.result = result;
+        }
+
+        @Override
+        public String toString() {
+            return "at " + time + "\t" + name + "\t" + result + "\t(" + value + ")";
+        }
+
+        @Override
+        public int compareTo(Object other) {
+            if (other instanceof Operation) {
+                return Long.compare(this.time, ((Operation) other).time);
+            }
+            return 0;
         }
     }
 }
